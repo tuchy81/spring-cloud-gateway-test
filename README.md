@@ -1,6 +1,6 @@
 # 모바일 SPA BFF 목업 (Spring Cloud Gateway)
 
-기존 **Web 인증체계(OIDC + BFF 토큰핸들러)는 그대로 유지**하면서, 모바일 Shell(mocean) 내부 하이브리드 SPA를
+기존 **Web 인증체계(OIDC + BFF 토큰핸들러)는 그대로 유지**하면서, 모바일 Shell내부 하이브리드 SPA를
 위한 **SPA별 모바일 BFF**를 추가하는 구조의 동작 목업입니다.
 
 - Shell 의 1회용 opaque 티켓(`Authorization: Bearer`) → **Keycloak token-exchange** 로 `aud=mobile-api` JWT 발급
