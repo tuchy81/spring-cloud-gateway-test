@@ -3,26 +3,11 @@ package com.example.mbff;
 import static org.junit.jupiter.api.Assertions.*;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 
+/** allowlist 매칭은 Gateway 라우트(yml)가 수행하므로 E2E(scripts/e2e.py)에서 검증. 여기서는 보조 로직만 단위 테스트. */
 class WhitelistTest {
-    private final Whitelist wl = new Whitelist(new MobileBffProperties("t", List.of(), "", "/mobile", null, null, null,
-            List.of(new MobileBffProperties.Rule(List.of("GET"), "/api/orders", List.of()),
-                    new MobileBffProperties.Rule(List.of("GET"), "/api/orders/*", List.of("id")))));
-
-    @Test void allowsListed() {
-        assertTrue(wl.match("GET", "/api/orders").isPresent());
-        assertTrue(wl.match("GET", "/api/orders/7").isPresent());
-    }
-
-    @Test void deniesByDefault() {
-        assertTrue(wl.match("POST", "/api/orders").isEmpty());
-        assertTrue(wl.match("GET", "/api/admin/users").isEmpty());
-        assertTrue(wl.match("GET", "/api/orders/7/x").isEmpty());
-    }
-
     @Test void rejectsTraversal() {
         for (String p : new String[]{"/api/orders/../admin/users", "/api//orders", "/api/orders/%2e%2e/x", "/api/orders;x=1"})
             assertFalse(Whitelist.isSafePath(p), p);

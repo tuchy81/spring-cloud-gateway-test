@@ -19,7 +19,6 @@ management:
         include: health
 mobile-bff:
   api-gateway-url: ${API_GW_URL:http://localhost:8100}
-  api-gateway-prefix: /mobile            # GW 의 모바일 채널 라우트 (aud=mobile-api 강제)
   shell:
     verify-url: ${SHELL_VERIFY_URL:http://localhost:8200/shell/ticket/verify}
     api-key: ${SHELL_API_KEY:shell-bff-key}

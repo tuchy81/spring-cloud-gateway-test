@@ -181,7 +181,7 @@ mobile+web/
 - 확정: 티켓→JWT 는 **Keycloak token-exchange**, 후속 요청은 세션쿠키, 티켓은 **1회용 임의 문자열**.
 - 검토보고서(`모바일앱_BFF구조_검토보고서.pdf`) 반영: Redis `session:mobile:*` 분리, `aud=mobile-api` + 짧은 TTL, API GW `/mobile/*`·`/internal/*` 라우트 분리 및 채널별 quota, device_id 바인딩, allowlist + 응답 필드 allowlist.
 - 계획 대비 변경: impersonation 교환 토큰은 refresh 불가 → **재교환 방식**으로 대체 (README §5).
-- 구현 완료(P1~P9) 및 검증: [README.md](README.md), [TEST_RESULTS.md](TEST_RESULTS.md) (단위 4/4, E2E 48/48).
+- 구현 완료(P1~P9) 및 검증: [README.md](README.md), [TEST_RESULTS.md](TEST_RESULTS.md) (E2E 48/48; allowlist 는 yml Gateway 라우트로 정의).
 
 ## 11. 다음 액션 (계획 당시)
 1. 본 계획 검토 및 §6 결정사항 회신 (특히 Q1, Q3, Q4).

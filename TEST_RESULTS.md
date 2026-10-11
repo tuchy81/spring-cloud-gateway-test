@@ -3,12 +3,13 @@
 - 실행 일시: 2026-10-11 (WSL2 / Docker 28.5.0, Compose v2.40)
 - 대상: `docker compose up -d --build` 로 기동한 전체 스택 (Keycloak 26.0.8, Apache 2.4.68 + mod_auth_openidc 2.4.12, FastAPI GW, Spring Cloud Gateway BFF ×2, Redis 7)
 - 원본 출력: [scripts/e2e-output.txt](scripts/e2e-output.txt)
+- 2026-10-12: allowlist 를 yml 의 Gateway 라우트(predicates + metadata)로 이전한 뒤 E2E **48/48 재통과** (동작 동일)
 
 ## 요약
 
 | 구분 | 결과 |
 |---|---|
-| 단위 테스트 (mobile-bff, JUnit5 `WhitelistTest`) | **4/4 PASS** |
+| 단위 테스트 (mobile-bff, JUnit5 `WhitelistTest`: 경로 우회 검사, 응답 필드 필터) | **2/2 PASS** |
 | E2E 시나리오 (`python3 scripts/e2e.py`) | **48/48 PASS** |
 
 ## E2E 시나리오별 결과

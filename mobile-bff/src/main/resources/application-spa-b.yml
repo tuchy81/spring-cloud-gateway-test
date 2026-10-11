@@ -5,6 +5,25 @@ mobile-bff:
     client-id: mobile-bff-spa-b
   session:
     key-prefix: "session:mobile:spa-b"
-  whitelist:
-    - { methods: [GET], path: /api/profile }   # 필드 제한 없음 (SPA B 정책)
-    - { methods: [GET], path: /api/orders }
+
+# ───────────────────────── 모바일 API allowlist (SPA B) ─────────────────────────
+spring:
+  cloud:
+    gateway:
+      routes:
+        - id: spa-b-profile           # 필드 제한 없음 (SPA B 정책)
+          uri: ${mobile-bff.api-gateway-url}
+          predicates: [ "Path=/api/profile", "Method=GET" ]
+          filters:    [ "PrefixPath=/mobile" ]
+
+        - id: spa-b-orders
+          uri: ${mobile-bff.api-gateway-url}
+          predicates: [ "Path=/api/orders", "Method=GET" ]
+          filters:    [ "PrefixPath=/mobile" ]
+
+        - id: deny-all
+          order: 1000
+          uri: ${mobile-bff.api-gateway-url}
+          predicates: [ "Path=/api/**" ]
+          metadata:
+            allow: "false"

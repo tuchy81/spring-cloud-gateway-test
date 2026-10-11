@@ -5,7 +5,7 @@
 
 - Shell 의 1회용 opaque 티켓(`Authorization: Bearer`) → **Keycloak token-exchange** 로 `aud=mobile-api` JWT 발급
 - JWT 는 **모바일 전용 Redis**(`session:mobile:*`)에만 저장, SPA 에는 **HttpOnly 세션쿠키**만 전달
-- 모바일 BFF 의 **화이트리스트(allowlist)에 정의된 API 만** 호출 가능 (기본 deny) + 응답 필드 allowlist
+- 모바일 BFF 의 **allowlist(yml 의 Gateway 라우트)에 정의된 API 만** 호출 가능 (기본 deny) + 응답 필드 allowlist
 - API GW 는 채널별 라우트(`/internal/*`, `/mobile/*`)로 `aud` 를 강제하고 consumer 별 rate-limit 적용
 
 > 설계 근거: `모바일앱_BFF구조_검토보고서.pdf` (사내 문서, 저장소에는 미포함). 작업계획: [PLAN.md](PLAN.md), 테스트 결과: [TEST_RESULTS.md](TEST_RESULTS.md)
@@ -83,35 +83,51 @@ SPA ── GET /api/** (쿠키 + X-Device-Id) ─► Mobile BFF ─► [가드 �
 2. **CSRF** – 상태변경 메서드는 `X-Requested-With: XMLHttpRequest` 필수, `Origin` 이 있으면 `allowed-origins` 일치
 3. **세션 조회** – 쿠키 → Redis. 없으면 `401 {"action":"reauth_shell"}`
 4. **device_id 바인딩** – `X-Device-Id` 가 세션 생성 시 값과 다르면 403
-5. **화이트리스트** – (method, path 패턴) 불일치 시 **403 `not_whitelisted`** + 감사로그 (기본 deny)
+5. **allowlist** – yml 의 Gateway 라우트(§3.4)에 매칭되지 않아 마지막 `deny-all` 라우트에 걸리면 **403 `not_whitelisted`** + 감사로그 (기본 deny)
 6. **자동 재교환** – access 만료 임박 시 Keycloak 재교환 (Redis 락으로 동시 갱신 직렬화). 실패/절대수명 초과 시 세션 삭제 후 401
 7. **Bearer 주입** – 클라이언트가 보낸 `Authorization`/`Cookie`/`X-Device-Id`/`Accept-Encoding` 제거 후 `Authorization: Bearer <JWT>` 설정
-8. **응답 필드 allowlist** – 규칙의 `fields` 에 있는 최상위 필드만 응답 (객체/배열). 내부 필드(`internalCost`, `customerSsn` 등) 차단
+8. **응답 필드 allowlist** – 라우트 `metadata.response-fields` 에 있는 최상위 필드만 응답 (객체/배열). 내부 필드(`internalCost`, `customerSsn` 등) 차단
 
-### 3.4 SPA별 설정 (`application-spa-a.yml` / `-spa-b.yml`)
+### 3.4 SPA별 설정과 allowlist (`application-spa-a.yml` / `-spa-b.yml`)
 
 하나의 코드베이스 + Spring profile 로 인스턴스를 구분합니다. SPA 별로 `spa-id`, 허용 Origin, Keycloak `client_id`
-(`mobile-bff-spa-a/b`), Redis key prefix, **화이트리스트**가 다릅니다.
+(`mobile-bff-spa-a/b`), Redis key prefix, **allowlist** 가 다릅니다.
+
+**allowlist 는 yml 의 Spring Cloud Gateway 라우트로 명시**합니다. 라우트 하나 = 모바일에 노출하는 API 하나이며,
+API 를 추가/제거할 때 Java 코드 수정 없이 yml 만 고치면 됩니다.
 
 ```yaml
-mobile-bff:
-  spa-id: spa-a
-  whitelist:                   # 목록 외 경로는 전부 403
-    - { methods: [GET],  path: /api/profile, fields: [sub, username, email, roles] }
-    - { methods: [GET],  path: /api/orders,  fields: [id, item, qty, price] }
-    - { methods: [POST], path: /api/orders,  fields: [id, item, qty, price] }
+spring:
+  cloud:
+    gateway:
+      routes:
+        - id: spa-a-orders
+          uri: ${mobile-bff.api-gateway-url}
+          predicates: [ "Path=/api/orders", "Method=GET,POST" ]   # 허용 경로 + 메서드
+          filters:    [ "PrefixPath=/mobile" ]                    # API GW 모바일 채널(aud=mobile-api)로 전달
+          metadata:
+            response-fields: "id,item,qty,price"                  # (선택) 응답 필드 allowlist
+        # ... 허용 API 별로 라우트 추가 ...
+        - id: deny-all                                            # 마지막(order 큼): 위에 없는 /api/** 전부 403
+          order: 1000
+          uri: ${mobile-bff.api-gateway-url}
+          predicates: [ "Path=/api/**" ]
+          metadata:
+            allow: "false"
 ```
+
+`ApiGuardFilter` 는 Gateway 가 매칭한 라우트를 읽어 `allow: "false"` 이면 차단하고, `response-fields` 가 있으면 응답을 필터링합니다.
+(모든 SPA 설정 파일에는 마지막에 `deny-all` 라우트가 반드시 있어야 기본 deny 가 유지됩니다.)
 
 ### 3.5 주요 소스
 
 | 파일 | 내용 |
 |---|---|
 | `AuthController` | bootstrap / session / refresh / logout / config |
-| `ApiGuardFilter` | 가드 체인 8단계 + 응답 필드 필터 |
-| `Whitelist`, `ResponseFields`, `CsrfGuard` | 매칭(PathPattern)·경로검사, 필드 allowlist, CSRF |
+| `ApiGuardFilter` | 가드 체인 8단계 + 응답 필드 필터 (allowlist 는 yml 라우트에서 읽음) |
+| `Whitelist`, `ResponseFields`, `CsrfGuard` | 경로 우회 사전 차단, 필드 allowlist 적용, CSRF |
 | `SessionStore`, `Session` | Reactive Redis 세션 저장 (슬라이딩 TTL, refresh 락) |
 | `KeycloakClient`, `ShellTicketClient` | token-exchange 호출 / 티켓 검증 호출 |
-| `GatewayRoutes` | `/api/**` → GW `/mobile/api/**` 라우트 |
 
 ## 4. Keycloak 설정 요점 (`infra/keycloak`)
 

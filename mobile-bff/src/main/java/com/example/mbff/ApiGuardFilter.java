@@ -9,6 +9,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
+import org.springframework.cloud.gateway.route.Route;
+import org.springframework.cloud.gateway.support.ServerWebExchangeUtils;
 import org.springframework.core.Ordered;
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.core.io.buffer.DataBufferUtils;
@@ -37,13 +39,12 @@ public class ApiGuardFilter implements GlobalFilter, Ordered {
 
     private final MobileBffProperties props;
     private final SessionStore store;
-    private final Whitelist whitelist;
     private final KeycloakClient keycloak;
     private final ObjectMapper om;
 
-    public ApiGuardFilter(MobileBffProperties props, SessionStore store, Whitelist whitelist,
+    public ApiGuardFilter(MobileBffProperties props, SessionStore store,
                           KeycloakClient keycloak, ObjectMapper om) {
-        this.props = props; this.store = store; this.whitelist = whitelist; this.keycloak = keycloak; this.om = om;
+        this.props = props; this.store = store; this.keycloak = keycloak; this.om = om;
     }
 
     @Override public int getOrder() { return -100; }
@@ -68,8 +69,9 @@ public class ApiGuardFilter implements GlobalFilter, Ordered {
                     log.warn("AUDIT device mismatch spa={} user={}", props.spaId(), s.username());
                     return deny(ex, HttpStatus.FORBIDDEN, "device_mismatch");
                 }
-                var rule = whitelist.match(method, path);
-                if (rule.isEmpty()) {
+                // allowlist = yml 에 정의된 Gateway 라우트. 허용 라우트가 아니면(= 마지막 deny 라우트) 차단
+                Route route = ex.getAttribute(ServerWebExchangeUtils.GATEWAY_ROUTE_ATTR);
+                if (route == null || "false".equals(String.valueOf(route.getMetadata().get("allow")))) {
                     log.warn("AUDIT blocked(non-whitelisted) spa={} user={} {} {}", props.spaId(), s.username(), method, path);
                     return deny(ex, HttpStatus.FORBIDDEN, "not_whitelisted");
                 }
@@ -85,9 +87,9 @@ public class ApiGuardFilter implements GlobalFilter, Ordered {
                         h.remove("X-Device-Id");
                         h.set(HttpHeaders.AUTHORIZATION, "Bearer " + fresh.accessToken());
                     }).build();
-                    var fields = rule.get().fields();
-                    ServerHttpResponse resp = (fields == null || fields.isEmpty()) ? ex.getResponse()
-                            : new FieldFilteringResponse(ex.getResponse(), Set.copyOf(fields));
+                    Object fields = route.getMetadata().get("response-fields");   // 예: "id,item,qty"
+                    ServerHttpResponse resp = (fields == null || fields.toString().isBlank()) ? ex.getResponse()
+                            : new FieldFilteringResponse(ex.getResponse(), Set.of(fields.toString().trim().split("\\s*,\\s*")));
                     return store.touch(fresh).then(chain.filter(ex.mutate().request(req).response(resp).build()));
                 });
             });

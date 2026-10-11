@@ -5,8 +5,40 @@ mobile-bff:
     client-id: mobile-bff-spa-a
   session:
     key-prefix: "session:mobile:spa-a"
-  whitelist:                             # 기본 거부. 아래 목록만 모바일에서 호출 가능
-    - { methods: [GET],  path: /api/profile, fields: [sub, username, email, roles] }
-    - { methods: [GET],  path: /api/orders,  fields: [id, item, qty, price] }
-    - { methods: [GET],  path: "/api/orders/*", fields: [id, item, qty, price] }
-    - { methods: [POST], path: /api/orders,  fields: [id, item, qty, price] }
+
+# ───────────────────────── 모바일 API allowlist (SPA A) ─────────────────────────
+# Gateway 라우트 = 허용 API. 여기에 없는 /api/** 는 맨 아래 deny-all 라우트에 걸려 403.
+#   predicates : 허용 메서드 + 경로 (Path 패턴: /api/orders/* 등)
+#   PrefixPath : API GW 의 모바일 채널 라우트(/mobile/**, aud=mobile-api 강제)로 전달
+#   metadata.response-fields : 응답에 남길 최상위 필드 (생략 시 전체 응답)
+spring:
+  cloud:
+    gateway:
+      routes:
+        - id: spa-a-profile
+          uri: ${mobile-bff.api-gateway-url}
+          predicates: [ "Path=/api/profile", "Method=GET" ]
+          filters:    [ "PrefixPath=/mobile" ]
+          metadata:
+            response-fields: "sub,username,email,roles"
+
+        - id: spa-a-orders            # 목록 조회 + 등록
+          uri: ${mobile-bff.api-gateway-url}
+          predicates: [ "Path=/api/orders", "Method=GET,POST" ]
+          filters:    [ "PrefixPath=/mobile" ]
+          metadata:
+            response-fields: "id,item,qty,price"
+
+        - id: spa-a-order-detail
+          uri: ${mobile-bff.api-gateway-url}
+          predicates: [ "Path=/api/orders/*", "Method=GET" ]
+          filters:    [ "PrefixPath=/mobile" ]
+          metadata:
+            response-fields: "id,item,qty,price"
+
+        - id: deny-all                # 마지막 라우트(order 가장 큼): 위에 없는 모든 /api/** 차단
+          order: 1000
+          uri: ${mobile-bff.api-gateway-url}
+          predicates: [ "Path=/api/**" ]
+          metadata:
+            allow: "false"
