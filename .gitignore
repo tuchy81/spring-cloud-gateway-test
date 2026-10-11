@@ -1,0 +1,8 @@
+target/
+*.class
+.idea/
+.vscode/
+scripts/e2e-result.json
+# 사내 검토 문서 (public 저장소에 포함하지 않음)
+*.pdf
+__pycache__/

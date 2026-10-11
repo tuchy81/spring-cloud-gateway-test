@@ -1,0 +1,31 @@
+<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mobile SPA</title>
+<body style="font-family:sans-serif;max-width:720px;margin:1rem auto">
+<h2 id=h>Mobile SPA</h2><div id=st>초기화 중...</div>
+<p>
+<button onclick="c('GET','/api/profile')">/api/profile</button>
+<button onclick="c('GET','/api/orders')">/api/orders</button>
+<button onclick="c('POST','/api/orders',{item:'mouse',qty:1,price:9000})">POST /api/orders</button>
+<button onclick="c('GET','/api/admin/users')">/api/admin/users (비허용)</button>
+<button onclick="c('GET','/api/hr/employees/export')">/api/hr/employees/export (비허용)</button>
+<button onclick="out()">로그아웃</button></p>
+<pre id=o></pre>
+<script>
+const X={'X-Requested-With':'XMLHttpRequest'};let dev=null;
+async function init(){
+  const cfg=await (await fetch('/m/config')).json();h.textContent='Mobile SPA — '+cfg.spaId;
+  const f=new URLSearchParams(location.hash.slice(1));
+  if(f.get('ticket')){ // Shell 이 주입한 1회용 티켓 → 세션쿠키로 교환
+    dev=f.get('device');sessionStorage.setItem('dev',dev);history.replaceState(null,'',location.pathname);
+    const r=await fetch('/m/auth/bootstrap',{method:'POST',credentials:'same-origin',
+      headers:{...X,'Authorization':'Bearer '+f.get('ticket'),'X-Device-Id':dev}});
+    st.textContent='bootstrap -> '+r.status+' '+await r.text();
+  } else { dev=sessionStorage.getItem('dev');
+    const r=await fetch('/m/auth/session',{credentials:'same-origin'});st.textContent='session -> '+r.status+' '+await r.text(); }
+}
+async function c(m,p,b){const r=await fetch(p,{method:m,credentials:'same-origin',
+  headers:{...X,'X-Device-Id':dev||'','Content-Type':'application/json'},body:b?JSON.stringify(b):undefined});
+  o.textContent=m+' '+p+' -> '+r.status+'\n'+await r.text()}
+async function out(){const r=await fetch('/m/auth/logout',{method:'POST',headers:X});o.textContent='logout -> '+r.status}
+init();
+</script>

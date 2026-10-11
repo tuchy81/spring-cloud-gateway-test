@@ -1,0 +1,15 @@
+<!doctype html><meta charset="utf-8"><title>Web SPA</title>
+<body style="font-family:sans-serif;max-width:720px;margin:2rem auto">
+<h2>Web SPA (Apache + mod_auth_openidc)</h2>
+<p><a href="/oidc/callback?logout=http%3A%2F%2Fweb.localhost%3A8000%2F">로그아웃</a></p>
+<button onclick="c('GET','/api/profile')">/api/profile</button>
+<button onclick="c('GET','/api/orders')">/api/orders</button>
+<button onclick="c('POST','/api/orders',{item:'mouse',qty:1,price:9000})">POST /api/orders</button>
+<button onclick="c('GET','/api/admin/users')">/api/admin/users</button>
+<button onclick="c('GET','/api/hr/employees/export')">/api/hr/employees/export</button>
+<pre id=o></pre>
+<script>
+async function c(m,p,b){const r=await fetch(p,{method:m,credentials:'same-origin',
+ headers:{'X-Requested-With':'XMLHttpRequest','Content-Type':'application/json'},body:b?JSON.stringify(b):undefined});
+ document.getElementById('o').textContent=m+' '+p+' -> '+r.status+'\n'+await r.text()}
+</script>

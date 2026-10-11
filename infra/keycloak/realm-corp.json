@@ -1,0 +1,33 @@
+{
+  "realm": "corp",
+  "enabled": true,
+  "sslRequired": "none",
+  "accessTokenLifespan": 300,
+  "ssoSessionIdleTimeout": 1800,
+  "ssoSessionMaxLifespan": 36000,
+  "revokeRefreshToken": true,
+  "refreshTokenMaxReuse": 0,
+  "roles": { "realm": [ { "name": "admin" }, { "name": "user" } ] },
+  "users": [
+    { "username": "alice", "enabled": true, "email": "alice@example.com", "firstName": "Alice", "lastName": "Kim",
+      "credentials": [ { "type": "password", "value": "alice", "temporary": false } ], "realmRoles": [ "admin", "user" ] },
+    { "username": "bob", "enabled": true, "email": "bob@example.com", "firstName": "Bob", "lastName": "Lee",
+      "credentials": [ { "type": "password", "value": "bob", "temporary": false } ], "realmRoles": [ "user" ] }
+  ],
+  "clients": [
+    { "clientId": "web-bff", "secret": "web-bff-secret", "publicClient": false, "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false, "fullScopeAllowed": true,
+      "redirectUris": [ "http://web.localhost:8000/oidc/callback" ],
+      "attributes": { "post.logout.redirect.uris": "http://web.localhost:8000/*" },
+      "protocolMappers": [ { "name": "aud-internal-api", "protocol": "openid-connect", "protocolMapper": "oidc-audience-mapper",
+        "config": { "included.client.audience": "internal-api", "access.token.claim": "true", "id.token.claim": "false" } } ] },
+    { "clientId": "internal-api", "bearerOnly": true },
+    { "clientId": "mobile-api", "bearerOnly": true },
+    { "clientId": "mobile-bff-spa-a", "secret": "mbff-spa-a-secret", "publicClient": false, "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false, "fullScopeAllowed": true,
+      "attributes": { "client.session.idle.timeout": "604800", "client.session.max.lifespan": "2592000", "access.token.lifespan": "300" } },
+    { "clientId": "mobile-bff-spa-b", "secret": "mbff-spa-b-secret", "publicClient": false, "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false, "fullScopeAllowed": true,
+      "attributes": { "client.session.idle.timeout": "604800", "client.session.max.lifespan": "2592000", "access.token.lifespan": "300" } }
+  ]
+}

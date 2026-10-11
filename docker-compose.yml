@@ -1,0 +1,89 @@
+# 모든 외부 도메인은 *.localhost (브라우저/curl 이 127.0.0.1 로 자동 해석, hosts 수정 불필요)
+# 컨테이너 내부에서는 network alias 로 동일 호스트명을 사용 → issuer 일치
+name: mobileweb
+services:
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0.8
+    command: start-dev --import-realm --features=token-exchange,admin-fine-grained-authz
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      KC_HOSTNAME: http://keycloak.localhost:8080
+      KC_HOSTNAME_BACKCHANNEL_DYNAMIC: "true"   # 내부 호출은 요청 Host 기준 backchannel URL, issuer 는 KC_HOSTNAME 고정
+      KC_HTTP_ENABLED: "true"
+    volumes:
+      - ./infra/keycloak/realm-corp.json:/opt/keycloak/data/import/realm-corp.json:ro
+    ports: ["8080:8080"]
+    networks:
+      default:
+        aliases: [keycloak.localhost]
+
+  kc-init:
+    image: python:3.12-slim
+    depends_on: [keycloak]
+    environment: { KC_URL: "http://keycloak.localhost:8080" }
+    volumes: ["./infra/keycloak/init_exchange.py:/init.py:ro"]
+    command: ["python", "/init.py"]
+    restart: "no"
+
+  redis-mobile:            # 모바일 BFF 전용 (session:mobile:*)
+    image: redis:7-alpine
+    ports: ["6380:6379"]
+
+  api-gw:
+    build: ./api-gateway-py
+    environment:
+      OIDC_ISSUER: http://keycloak.localhost:8080/realms/corp
+    ports: ["8100:8000"]
+    depends_on: [keycloak]
+
+  shell-auth:
+    build: ./shell-auth-mock
+    environment: { SHELL_BFF_API_KEY: shell-bff-key }
+    ports: ["8200:8000"]
+    networks:
+      default:
+        aliases: [shell.localhost]
+
+  web-bff:
+    build: ./web-bff-apache
+    environment:
+      OIDC_ISSUER: http://keycloak.localhost:8080/realms/corp
+      OIDC_METADATA_BASE: http://keycloak:8080/realms/corp   # libcurl 은 *.localhost 를 루프백으로 해석하므로 내부 주소 사용
+      WEB_BFF_SECRET: web-bff-secret
+      OIDC_CRYPTO: change-me-passphrase
+    ports: ["8000:80"]
+    depends_on: [keycloak, api-gw]
+    networks:
+      default:
+        aliases: [web.localhost]
+
+  mobile-bff-spa-a:
+    build: ./mobile-bff
+    environment: &mbff-env
+      SPRING_PROFILES_ACTIVE: spa-a
+      REDIS_HOST: redis-mobile
+      KEYCLOAK_BASE: http://keycloak.localhost:8080/realms/corp
+      API_GW_URL: http://api-gw:8000
+      SHELL_VERIFY_URL: http://shell-auth:8000/shell/ticket/verify
+      SHELL_API_KEY: shell-bff-key
+      CLIENT_SECRET: mbff-spa-a-secret
+    volumes: ["./spa-samples/mobile:/spa:ro"]
+    ports: ["9001:8080"]
+    depends_on: [redis-mobile, keycloak, api-gw, shell-auth]
+    networks:
+      default:
+        aliases: [spa-a.localhost]
+
+  mobile-bff-spa-b:
+    build: ./mobile-bff
+    environment:
+      <<: *mbff-env
+      SPRING_PROFILES_ACTIVE: spa-b
+      CLIENT_SECRET: mbff-spa-b-secret
+    volumes: ["./spa-samples/mobile:/spa:ro"]
+    ports: ["9002:8080"]
+    depends_on: [redis-mobile, keycloak, api-gw, shell-auth]
+    networks:
+      default:
+        aliases: [spa-b.localhost]

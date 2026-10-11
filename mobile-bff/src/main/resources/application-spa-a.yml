@@ -1,0 +1,12 @@
+mobile-bff:
+  spa-id: spa-a
+  allowed-origins: [ "http://spa-a.localhost:9001" ]
+  keycloak:
+    client-id: mobile-bff-spa-a
+  session:
+    key-prefix: "session:mobile:spa-a"
+  whitelist:                             # 기본 거부. 아래 목록만 모바일에서 호출 가능
+    - { methods: [GET],  path: /api/profile, fields: [sub, username, email, roles] }
+    - { methods: [GET],  path: /api/orders,  fields: [id, item, qty, price] }
+    - { methods: [GET],  path: "/api/orders/*", fields: [id, item, qty, price] }
+    - { methods: [POST], path: /api/orders,  fields: [id, item, qty, price] }

@@ -1,0 +1,39 @@
+server:
+  port: 8080
+spring:
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+  web:
+    resources:
+      static-locations: file:/spa/
+  cloud:
+    gateway:
+      httpclient:
+        pool:
+          max-idle-time: 30s
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+mobile-bff:
+  api-gateway-url: ${API_GW_URL:http://localhost:8100}
+  api-gateway-prefix: /mobile            # GW 의 모바일 채널 라우트 (aud=mobile-api 강제)
+  shell:
+    verify-url: ${SHELL_VERIFY_URL:http://localhost:8200/shell/ticket/verify}
+    api-key: ${SHELL_API_KEY:shell-bff-key}
+  keycloak:
+    base: ${KEYCLOAK_BASE:http://keycloak.localhost:8080/realms/corp}
+    client-secret: ${CLIENT_SECRET:changeme}
+    audience: mobile-api
+  session:
+    cookie-name: MSESSION
+    cookie-secure: false                 # 운영(https)에서는 true
+    idle-ttl: 30m                        # 모바일 세션 유휴 TTL (웹과 별도 정책)
+    refresh-skew-seconds: 30
+    max-lifetime: 7d                     # 세션 절대 수명 (BFF 통제, 초과 시 Shell 재인증)
+    require-device-id: true
+logging:
+  level:
+    com.example.mbff: INFO

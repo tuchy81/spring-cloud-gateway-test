@@ -1,0 +1,19 @@
+<!doctype html><meta charset="utf-8"><title>Shell Simulator</title>
+<body style="font-family:sans-serif;max-width:640px;margin:2rem auto">
+<h2>mocean Shell 시뮬레이터</h2>
+<p>Shell 로그인 후, SPA 를 열 때마다 1회용 티켓을 발급해 URL fragment 로 전달합니다.<br>
+(실제 앱에서는 WebView 가 첫 요청에 <code>Authorization: Bearer &lt;ticket&gt;</code> 헤더를 주입)</p>
+<input id=u value=alice> <input id=p value=alice type=password> <button onclick=login()>Shell 로그인</button>
+<pre id=out></pre>
+<div id=apps style="display:none">
+<button onclick="openSpa('spa-a','http://spa-a.localhost:9001')">SPA A 열기</button>
+<button onclick="openSpa('spa-b','http://spa-b.localhost:9002')">SPA B 열기</button></div>
+<script>
+let S=null;const o=document.getElementById('out');
+async function login(){const r=await fetch('/shell/login',{method:'POST',headers:{'Content-Type':'application/json'},
+ body:JSON.stringify({username:u.value,password:p.value})});
+ if(!r.ok){o.textContent='로그인 실패';return}S=await r.json();o.textContent='shell session OK, device='+S.device_id;apps.style.display='block'}
+async function openSpa(spa,base){const r=await fetch('/shell/ticket',{method:'POST',
+ headers:{'Content-Type':'application/json',Authorization:'Bearer '+S.shell_session},body:JSON.stringify({spa})});
+ const t=await r.json();window.open(base+'/#ticket='+encodeURIComponent(t.ticket)+'&device='+encodeURIComponent(t.device_id),'_blank')}
+</script>

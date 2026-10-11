@@ -1,0 +1,10 @@
+mobile-bff:
+  spa-id: spa-b
+  allowed-origins: [ "http://spa-b.localhost:9002" ]
+  keycloak:
+    client-id: mobile-bff-spa-b
+  session:
+    key-prefix: "session:mobile:spa-b"
+  whitelist:
+    - { methods: [GET], path: /api/profile }   # 필드 제한 없음 (SPA B 정책)
+    - { methods: [GET], path: /api/orders }

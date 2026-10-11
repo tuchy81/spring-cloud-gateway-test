@@ -1,0 +1,50 @@
+PASS - M1 bootstrap 200 + 세션쿠키 
+PASS - M2 쿠키 HttpOnly 
+PASS - M3 응답/쿠키에 JWT 미노출 
+PASS - M4 /api/profile 200 (화이트리스트) 
+PASS - M5 응답 필드 allowlist (aud/internalNote/consumer 제거) 
+PASS - M6 /api/orders 200 + internalCost/customerSsn 제거 
+PASS - M7 POST /api/orders 200 
+PASS - W1 비허용 /api/admin/users → 403 not_whitelisted 
+PASS - W1 비허용 /api/hr/employees/export → 403 not_whitelisted 
+PASS - W1 비허용 /api/unknown → 403 not_whitelisted 
+PASS - W2 허용경로라도 비허용 메서드 → 403 
+PASS - W3 경로 우회 차단 /api/orders/../admin/users 
+PASS - W3 경로 우회 차단 /api//admin/users 
+PASS - W3 경로 우회 차단 /api/orders/%2e%2e/admin/users 
+PASS - T1 티켓 재사용 거부 (1회용) 
+PASS - T2 위조 티켓 거부 
+PASS - T3 다른 SPA용 티켓 거부 (spa 바인딩) 
+PASS - T4 티켓-디바이스 불일치 거부 
+PASS - T5 CSRF 헤더 없는 bootstrap 거부 
+PASS - S1 device_id 불일치 → 403 
+PASS - S2 세션쿠키 없음 → 401 
+PASS - S3 클라이언트가 보낸 Authorization 무시 
+PASS - S4 허용되지 않은 Origin POST 거부 
+PASS - S5 /m/auth/session 에 토큰 미노출 
+PASS - R1 Redis 키 네임스페이스 session:mobile:spa-a:* 
+PASS - R2 Redis 세션에 access JWT 저장 (refresh token 은 저장하지 않음) 
+PASS - R3 Redis TTL 설정 (≤ idle 30m) 
+PASS - R4 JWT aud=mobile-api, azp=mobile-bff-spa-a 
+PASS - I1 spa-a 세션쿠키를 spa-b BFF 에서 사용 불가 
+PASS - I2 spa-b bootstrap 200 
+PASS - I3 spa-b 별도 정책: 필드 제한 없음 
+PASS - I4 spa-b 는 POST /api/orders 비허용 
+PASS - I5 bob 은 본인 주문만 조회 (JWT 사용자 전파) 
+PASS - L1 logout 200 
+PASS - L2 logout 후 401 
+PASS - L3 Redis 세션 삭제 
+PASS - F1 access 만료 시 자동 재교환 후 200 (새 토큰) 
+PASS - F2 재교환 실패(IdP 사용자 무효) → 401 reauth_shell + 세션 삭제 
+PASS - G1 GW /mobile/* : mobile JWT 허용 
+PASS - G2 GW /internal/* : mobile JWT(aud=mobile-api) 거부 
+PASS - G3 GW 토큰 없음 → 401 
+PASS - W-1 미인증 /api → 401 (리다이렉트 아님) 
+PASS - W-2 OIDC 로그인(code flow) 후 Web SPA 로드 
+PASS - W-3 Web /api/profile 200 (Bearer 주입) 
+PASS - W-4 Web 채널=internal, aud=internal-api, consumer=web-bff 
+PASS - W-5 Web 은 기존 정책대로 admin API 접근 가능(alice=admin) 
+PASS - W-6 Web 쿠키: 세션 id(web_session)만, JWS(JWT) 없음 (서버측 세션) 
+PASS - W-7 Web 상태변경 API CSRF 헤더 없으면 403 
+
+48/48 passed
